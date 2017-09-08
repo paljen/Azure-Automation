@@ -100,9 +100,7 @@ try
     }
 
     # Migrating on-Prem user credentials
-    $onpremPsw = "76492d1116743f0423413b16050a5345MgB8AGgAMwBFAE8AbABwAEoAMwBiAHgATgBkAHQAeQBSAHYAbgAyADMAbgBSAFEAPQA9AHwANAA5A`
-                  GQANABjAGQAYQBhAGYAMAA4ADUAYgA1ADQAZAA5ADUAZAA0ADAAYwA1AGEANgBjADYAOABjAGYAYQA0ADEAMQAzAGYAZAA0ADQANwAyADIAOQ`
-                  BiAGUAOQBlADAAMABjADkAYQAzAGIAMQA0AGYAMABjADgAYwBlADIAZQA="
+    $onpremPsw = ""
     $onpremKey = "114 68 52 220 193 142 18 14 248 152 104 9 229 250 130 102 227 214 5 216 214 223 112 30 66 73 229 38 86 87 170 182"
     $onpremPswSecure = ConvertTo-SecureString -String $onpremPsw -Key ([Byte[]]$onpremKey.Split(" "))
     $onPremCred = New-Object system.Management.Automation.PSCredential("prd.eccocorp.net\service-o365-uc", $onpremPswSecure)
