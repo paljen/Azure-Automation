@@ -103,7 +103,7 @@ try
     $onpremPsw = ""
     $onpremKey = "114 68 52 220 193 142 18 14 248 152 104 9 229 250 130 102 227 214 5 216 214 223 112 30 66 73 229 38 86 87 170 182"
     $onpremPswSecure = ConvertTo-SecureString -String $onpremPsw -Key ([Byte[]]$onpremKey.Split(" "))
-    $onPremCred = New-Object system.Management.Automation.PSCredential("prd.eccocorp.net\service-o365-uc", $onpremPswSecure)
+    $onPremCred = New-Object system.Management.Automation.PSCredential("*.net\service-o365-uc", $onpremPswSecure)
 
     # Array to store the move requests
     $mRequest = @()
