@@ -13,7 +13,7 @@
     A new move request is then made for each object (UserPrincipalName) the script takes as input.
 
     As a note the migration is done on the target domain (online) but on-premise credentails are 
-    needed for the migration to start (prd.eccocorp.net\service-o365-uc).
+    needed for the migration to start.
 
 .INPUTS
     Array
