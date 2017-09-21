@@ -1,3 +1,4 @@
+
 <#
 .DESCRIPTION
     A brief description on what is going on in the runbook
@@ -11,7 +12,8 @@
 
 .PARAMETERS  
     <ParameterName>
-	The description of a parameter. (Add .PARAMETER keyword for each parameter)
+	The description of a parameter. 
+	(Add PARAMETERS keyword for each parameter)
 
 .OUTPUTS
     [Object]
