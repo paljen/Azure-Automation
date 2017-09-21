@@ -3,22 +3,24 @@
 .DESCRIPTION
     A brief description on what is going on in the runbook
 
-    Control runbooks 
-    •	Flow control for particular use case where more components or scripts are a part of.
-    •	Can be initiated from all higher tier runbooks (Interfaces, Init)
-    •	Connects to azure resource manger if needed
+    Runbook Tagging
+    •	Modular, reusable – single purpose runbooks. - Tag: Component
+    •	Modular, reusable – single purpose runbooks used in Components - Tag: Core
+    •	Non modular, made for a specific purpose - Tag: Script   
+    •	Flow specific runbooks - Tag: Controller
+    •	Integration runbooks combined with webhooks - Tag: Interface
 
-.INPUTS
-    NA
+.PARAMETER  <ParameterName>
+	The description of a parameter. (Add .PARAMETER keyword for each parameter)
 
 .OUTPUTS
     [Object]
 
 .NOTES
-    Version:        1.0.0
-    Author:			
-    Creation Date:	
-    Purpose/Change:	Initial runbook development
+    Version : 1.0
+    Author  : {Username}		
+    Note    : {[Major.Minor]} - {Date}, {Username}, {Description}
+    Note    : 1.0 - 21-09-2017, Admin-PJE, Initial runbook development
 #>
 
 Param(
