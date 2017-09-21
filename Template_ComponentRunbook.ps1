@@ -98,13 +98,19 @@ try
         Throw "Error - One or more modules was not imported"
     }
 
-    <#
-        CODE GOES HERE
-    #>
-       
-    # Return values used for further processing, add properties if needed
+    # Set first time password
+    $psw = "P@ssw0rd1234!"
+    $Log.Add($instance.WriteLogEntry($RunbookName,"First time password set to $psw")) | Out-Null
+
+    # Pass hashtable and create AD User object, passthru result
+    $user = New-ADUser @params
+    $user.pdw = "$psw"
+    $Log.Add($instance.WriteLogEntry($RunbookName,"Successfully created account: $($user.DistinguishedName)")) | Out-Null
+
+     # Return values used for further processing, add properties if needed
     $props = [Ordered]@{'Status' = "Success"
                         'Message' = "Runbook Finished Successfully"
+                        'Account' = @{'Values'=$user}
                         'ObjectCount' = 1
     }
 }
