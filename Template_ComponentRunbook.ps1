@@ -21,8 +21,9 @@
     Version : 2.0
     Author  : Admin-PJE		
     Note    : {[Major.Minor]} - {Date}, {Username}, {Description}
+    Note    : 1.0 - 21-09-2017, Admin-PJE, Initial runbook development
     Note    : 1.1 - 21-09-2017, Admin-PJE, Set ErrorActionPreference to STOP
-    Note    : 2.0 - 21-09-2017, Admin-PJE, Added Verbose logging functionallity 
+    Note    : 2.0 - 21-09-2017, Admin-PJE, Added Verbose logging functionallity
 #>
 
 Param(
