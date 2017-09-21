@@ -17,10 +17,11 @@
     [Object]
 
 .NOTES
-    Version:        1.0.0
+    Version:        1.0.1
     Author:			
     Creation Date:	
     Purpose/Change:	Initial runbook development
+    Purpose/Change:	21-09-2017 Changed ErrorActionPreference to STOP
 #>
 
 Param(
