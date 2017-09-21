@@ -3,25 +3,23 @@
 .DESCRIPTION
     A brief description on what is going on in the runbook
 
-    Component / Script runbooks
-    •	Modular, reusable – single purpose runbooks. (Tag: Component)
-    •	Non modular, made for a specific purpose (Tag: Script)
-    •	Uses Core runbooks to connect to resources
-    •	Can be initiated from all higher tier runbooks (Interfaces, Controllers)
-    •	Connects to azure resource manger if needed
+    Runbook Tagging
+    •	Modular, reusable – single purpose runbooks. - Tag: Component
+    •	Modular, reusable – single purpose runbooks used in Components - Tag: Core
+    •	Non modular, made for a specific purpose - Tag: Script   
+    •	Flow specific runbooks - Tag: Controller
+    •	Integration runbooks combined with webhooks - Tag: Interface
 
-.INPUTS
-    NA
+.PARAMETER  <ParameterName>
+	The description of a parameter. (Add .PARAMETER keyword for each parameter)
 
 .OUTPUTS
     [Object]
 
 .NOTES
-    Version:        1.0.1
-    Author:			
-    Creation Date:	
-    Purpose/Change:	Initial runbook development
-    Purpose/Change:	21-09-2017 Changed ErrorActionPreference to STOP
+    Version : 1.0
+    Author  : {Username}		
+    Note    : {[Major.Minor]} - {Date}, {Username}, {Description}
 #>
 
 Param(
