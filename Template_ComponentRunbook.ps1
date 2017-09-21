@@ -10,11 +10,9 @@
     •	Flow specific runbooks - Tag: Controller
     •	Integration runbooks combined with webhooks - Tag: Interface
 
-.PARAMETERS  
-    <ParameterName>
-	The description of a parameter. 
-	(Add PARAMETERS keyword for each parameter)
-
+.PARAMETER ParameterName
+    The description of a parameter. (Add PARAMETER keyword for each parameter)
+    
 .OUTPUTS
     [Object]
 
