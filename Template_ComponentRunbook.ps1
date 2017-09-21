@@ -32,16 +32,7 @@ Param(
     [String]$Name,
 
     [Parameter(Mandatory=$true)]
-    [String]$SamAccountName,
-
-    [Parameter(Mandatory=$true)]
-    [String]$Location,
-
-    [Parameter(Mandatory=$true)]
-    [String]$Path,
-
-    [Parameter(Mandatory=$true)]
-    [String]$DomainController#>
+    [String]$SamAccountName#>
 
 )
 
