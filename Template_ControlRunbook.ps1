@@ -1,4 +1,4 @@
-﻿
+
 <#
 .DESCRIPTION
     A brief description on what is going on in the runbook
@@ -17,13 +17,23 @@
     [Object]
 
 .NOTES
-    Version : 1.0
-    Author  : {Username}		
-    Note    : {[Major.Minor]} - {Date}, {Username}, {Description}
-    Note    : 1.0 - 21-09-2017, Admin-PJE, Initial runbook development
+    rVersion : 1.0
+    Template : Control
+    tVersion : 2.1
+    Author   : {Username}		
+    Note     : {[Major.Minor]} - {Date}, {Username}, {Description}
+    Note     : 1.0 - 21-02-2017, Admin-PJE, Initial template development
+    Note     : 2.0 - 28-09-2017, Admin-PJE, Logging implemented
+    Note     : 2.1 - 21-09-2017, Admin-PJE, Added verbose output and some minor logging details
 #>
 
+[CmdletBinding()]
+
 Param(
+    
+    <# Adjust Parmameters to what is needed
+    [Parameter(Mandatory=$true)]
+    [String]$Name#>
 
 )
 
@@ -39,39 +49,38 @@ $RunbookName = ""
 
 try
 {
-    # Load classes
-    $repo = Get-AutomationVariable -Name Repository
-    . $repo\Classes\Log.ps1
-    . $repo\Classes\Report.ps1
-    
-    # Initialize runbook Log
-    [Array]$instance = [RunbookLog]::New()
+    if ([String]::IsNullOrEmpty($RunbookName)) 
+    {Throw "Please initialize the `$RunbookName variable"}
 
-    # Clone Logging Array to ArrayList to utalize array methods
-    [System.Collections.ArrayList]$Log = $instance.Clone()
+    $StartTime = Get-date
 
-    # Clear Cloned array for default entry
-    $Log.clear()
+    # Initialize workspace and repositories
+    $ws = Get-AutomationVariable -Name Workspace
+    . $ws\AzureAutomation\Repository\Classes\Log.ps1
 
-    # Initialize trace output stream, if the runbook is run in Azure the computername will return CLIENT
-    $Log.Add($Instance.WriteLogEntry($RunbookName,"Running on ($env:COMPUTERNAME)")) | Out-Null
+    # Initialize Logging
+    $FilePath = "$ws\AzureAutomation\Logs\$RunbookName.Log"
+
+    # If the log file is larger then 2 MB rename the the file, a new log file will be gererated
+    Get-Item -Path $FilePath -ErrorAction SilentlyContinue | ? {$_.length / 1KB -gt 2048} | Rename-Item -NewName $RunbookName-$((get-date).tostring("MMddyyyyHHmm")).log
+
+    [RunbookLog]$rbLog = [RunbookLog]::new($FilePath,$RunbookName)
+    $rbLog.WriteLogEntry($RunbookName, "Runbook started")
 
     # Optional - Connect to Azure Resource Manager, ignore if this is called from an Control runbook 
-    # Where connection already has be initialized with the variable `$conn
-    try{        
-        Get-AzureRmAutomationAccount | out-null
+    # Where connection already has been initialized with the variable `$conn
+    try{
+        Get-AzureRmAutomationAccount | Out-Null
     }
-
     catch{
         $conn = .\Connect-AzureRMAutomation.ps1
         
-        foreach ($i in $conn.Trace){
-            $Log.Add($instance.WriteLogEntry($i.RunbookName,$i.Message)) | Out-Null
-        }
+        # Write Log entries from sub runbook
+        $rbLog.WriteLogEntry($conn)
 
         if($conn.status -ne "Success"){
             Throw "Error - Connecting to Azure failed"
-        }
+        } 
     }
 
     # General flow is Execute component runbook, extract the Log and check the status of the runbook
@@ -79,10 +88,7 @@ try
     # Execute runbook to create on-premises AD user
     $usr = .\New-OnPremADUser.ps1 @usrParams
 
-    # Recieve log from sub runbook
-    foreach ($i in $usr.Trace){
-        $Log.Add($Instance.WriteLogEntry($i.RunbookName,$i.Message)) | Out-Null
-    }
+    $rbLog.WriteLogEntry($usr)
     
     # Throw exception if something went wrong
     if($usr.Status -eq "Failed"){
@@ -92,10 +98,7 @@ try
     # Execute runbook to create on-premises AD user
     $mb = .\Enable-OnPremiseUserMailbox.ps1 @mbParams
 
-    # Recieve log from sub runbook
-    foreach ($i in $mb.Trace){
-        $Log.Add($Instance.WriteLogEntry($i.RunbookName,$i.Message)) | Out-Null
-    }
+    $rbLog.WriteLogEntry($mb)
     
     # Throw exception if something went wrong
     if($mb.Status -eq "Failed"){
@@ -111,13 +114,12 @@ try
 catch
 {
     # Add to trace on what line the error occured and the exception message
-    $excep = $(if($_.Exception.Message.Contains("`"")){$_.Exception.Message.Replace("`"","'")}else{$_.Exception.Message})
-    $Log.Add($instance.WriteLogEntry($RunbookName,"Exception Caught at line $($_.InvocationInfo.ScriptLineNumber), $excep")) | Out-Null
+    $excep = $(if($error[0].Exception -contains ("`"")){$error[0].Exception -Replace ("`"","'")}else{$error[0].Exception})
+    $rbLog.WriteLogEntry($RunbookName, "Failed - Exception Caught at line $($error[0].InvocationInfo.ScriptLineNumber), $excep")
 
-    # Return values to component runbook
+    # Return values used for further processing, add properties if needed
     $props = [Ordered]@{'Status' = "Failed"
                         'Message' = $excep
-                        'Account' = $null
                         'ObjectCount' = 0
     }
 
@@ -128,19 +130,17 @@ finally
     # Build and send report via mail    
     $r = [RunbookReport]::new()
     $r.setStyle([Style]::DarkBlue)
-    $r.addContent("Trace Log",$Log.psobject.BaseObject)
+    $r.addContent("Trace Log",$($rbLog.Log).psobject.BaseObject)
     $report = $r.getReport()
-
    
     # optional, use Send-Email to send email or sms notifications, for sms use EmailAddressTo file with +45xxxxxxxx@sms.ecco.local
     $email = .\Send-Email.ps1 -EmailAddressTO $(Get-AutomationVariable -Name "Email-PJE") -Subject "Daily Report $RunbookName" -Body $report -AsHtml
+    $rbLog.WriteLogEntry($email)
 
-    # Recieve log from sub runbook $modules.trace
-    foreach ($i in $email.trace){
-        $Log.Add($instance.WriteLogEntry($i.RunbookName,$i.Message)) | Out-Null
-    }
-
-    $props.Add('Trace',$Log)
+    $rbLog.WriteLogEntry($RunbookName,"Runbook finished - total runtime: $((([DateTime]::Now) - $StartTime).TotalSeconds) Seconds")
+    $rbLog.Log.GetEnumerator() | foreach { Write-Verbose "$($_.RunbookName), $($_.Message), $($_.TimeStamp)" }
+   
+    $props.Add('Trace',$rbLog.Log)
     $props.Add('RunbookName',$RunbookName)
 
     $out = New-Object -TypeName PSObject -Property $props
