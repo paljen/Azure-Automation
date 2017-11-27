@@ -19,22 +19,22 @@
 .NOTES
     Version  : 1.0
     Template : Component
-    tVersion : 2.2
+    tVersion : 2.3
     Author   : {Username}		
     Note     : {[Major.Minor]} - {Date}, {Username}, {Description}
     Note     : 1.0 - 21-02-2017, Admin-PJE, Initial template development
     Note     : 2.0 - 28-09-2017, Admin-PJE, Logging implemented
     Note     : 2.1 - 21-09-2017, Admin-PJE, Added verbose output and some minor logging details
     Note     : 2.2 - 21-09-2017, Admin-PJE, Added minor logging details
+    Note     : 2.3 - 27-11-2017, Admin-PJE, Added Added the posibility to return output as JSON
 #>
 
 [CmdletBinding()]
 
 Param(
 
-    <# Adjust Parmameters to what is needed
-    [Parameter(Mandatory=$true)]
-    [String]$Name#>
+    [Parameter(Mandatory=$false)]
+    [Boolean]$ConvertToJson = $true
 
 )
 
@@ -131,5 +131,9 @@ finally
 
     $out = New-Object -TypeName PSObject -Property $props
 
-    Write-Output $out
+    # returned to Service Now the output should be converted to JSON
+    if($ConvertToJson){
+        Write-Output $out | ConvertTo-Json}
+    else{
+        Write-Output $out}
 }
