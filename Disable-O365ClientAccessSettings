@@ -1,7 +1,7 @@
 
 <#
 .DESCRIPTION
-    Connects to SCOM 2016 On Premise
+    Disables Exchange client access settings in Office 365 (exchange online) - hybrid setup
 
     Runbook Tagging
     •	Modular, reusable – single purpose runbooks. - Tag: Component
