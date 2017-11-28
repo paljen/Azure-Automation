@@ -1,0 +1,195 @@
+
+<#
+.DESCRIPTION
+    Get POS information from database and update DNS records
+
+    Runbook Tagging
+    •	Modular, reusable – single purpose runbooks. - Tag: Component
+    •	Modular, reusable – single purpose runbooks used in Components - Tag: Core
+    •	Non modular, made for a specific purpose - Tag: Script   
+    •	Flow specific runbooks - Tag: Controller
+    •	Integration runbooks combined with webhooks - Tag: Interface
+
+.NOTES
+    rVersion : 1.0
+    Template : Component
+    tVersion : 2.1
+    Author   : Admin-PJE
+    Contact	 : Steen Snorrason (SSNO)	
+    Note     : {[Major.Minor]} - {Date}, {Username}, {Description}
+    Note     : 1.0 - 09-11-2017, Admin-PJE, Initial runbook development
+#>
+
+Param(
+
+)
+
+$ErrorActionPreference = "Stop"
+
+<# To enable verbose stream set `$VerbosePreference to Continue, Verbose should also be 
+   switched "On" on the runbook in Azure portal.#>
+$VerbosePreference = "SilentlyContinue"
+
+# Provide the runbook with the same name as in Azure, this variable is used mainly for tracking
+$RunbookName = "Update-POSDNSRecords"
+
+try
+{
+    if ([String]::IsNullOrEmpty($RunbookName)) 
+    {Throw "Please initialize the `$RunbookName variable"}
+
+    $StartTime = Get-date
+
+    $ws = Get-AutomationVariable -Name Workspace
+    . $ws\AzureAutomation\Repository\Classes\Log.ps1
+
+    $FilePath = "$ws\AzureAutomation\Logs\$RunbookName.Log"
+
+    Get-Item -Path $FilePath -ErrorAction SilentlyContinue | ? {$_.length / 1KB -gt 2048} | Rename-Item -NewName $RunbookName-$((get-date).tostring("MMddyyyyHHmm")).log
+
+    [RunbookLog]$rbLog = [RunbookLog]::new($FilePath,$RunbookName)
+          
+    function Get-DBTableRows
+    {
+        [CmdletBinding()]
+        [OutputType([System.Data.DataSet])]
+    
+        param 
+        (
+            [string]$ConnectionString,
+            [string]$Query,
+            [PSCredential]$Credentials
+        )
+
+        $connection = New-Object -TypeName System.Data.SqlClient.SqlConnection
+
+        $connection.ConnectionString = $connectionString
+        $connection.Credential = ([System.Data.SqlClient.SqlCredential]::new($cred.UserName,$cred.Password))
+
+        $command = $connection.CreateCommand()
+        $command.CommandText = $query
+
+
+        $adapter = New-Object -TypeName System.Data.SqlClient.SqlDataAdapter $command
+
+        $dataset = New-Object -TypeName System.Data.DataSet
+
+        $adapter.Fill($dataset)
+        $dataset.Tables[0]
+
+        $connection.close()
+    }
+    
+    $dc = "DKHQDC01"
+    $connString = "server=dkhqsapfmstst01;database=GK_GBR;trusted_connection=True;Integrated Security=False;"
+
+    # Credentials
+    $key = "89 171 118 60 58 254 218 61 140 93 2 109 84 102 189 13 22 85 88 237 101 180 37 174 207 53 53 231 70 220 170 105"
+    $psw = "76492d1116743f0423413b16050a5345MgB8AHgAZABZADgAMgBvAHEANAA2AFgAWABUAG8AdwBhADQAVwBzAFEAUgBUAFEAPQA9AHwAMQBkAGUA`
+            NQBhAGYANAA1ADcAMwA2ADAAMAA2ADMAYgA3AGQAMwA5AGUAZgBlAGEAYwA0AGUAMQA2AGUAZABjAGMAYwAxAGEAZgBlAGYAMAA1ADMAMQAxAGIA`
+            MgA5ADIAZgA0ADgAZABmADMAZAA3AGYANgA0AGEAYwAxADEANQA="
+
+    $pswSecure = ConvertTo-SecureString -String $psw -Key ([Byte[]]$key.Split(" "))
+    $pswSecure.MakeReadOnly()
+
+    $cred = New-Object system.Management.Automation.PSCredential("asp_user", $pswSecure)
+           
+    $query = "SELECT * FROM [GK_GBR].[dbo].[DNS_View]"
+    
+    [System.Collections.ArrayList]$records = Get-DBTableRows -ConnectionString $connString -Credentials $cred -Query $query
+    $records.RemoveAt(0)
+
+    $rbLog.WriteLogEntry($RunbookName, "$($records.Count) records queried")
+
+    $session = New-PSSession -ComputerName $dc -Authentication Kerberos
+
+    $rbLog.WriteLogEntry($RunbookName, "Session $($session.Name) established, State $($session.State)")
+
+    $DNSRecords = Invoke-Command -Session $session -ScriptBlock {
+
+        Import-Module DNSServer
+
+        $forwardZone = 'prd.eccocorp.net'
+        $reverseZone = '172.in-addr.arpa'
+
+        $using:records | Foreach {
+
+            try{
+                $current = @{'Host'=$_.Host;'KnownIP'=$_.KnownIP}
+
+                $oRecord = Get-DnsServerResourceRecord -Name $($current.Host) -ZoneName $forwardZone -RRType "A" -ErrorAction Stop
+                $nRecord = $oRecord.Clone()
+
+                # reverse IP
+                $reverseIpArray = [System.Collections.ArrayList] @($($nRecord.RecordData.IPv4Address.IPAddressToString).Split("."))                    
+                $reverseIpArray.RemoveAt(0)
+                $reverseIpArray.Reverse()
+                $ptrName = $($reverseIpArray -join ".")
+                                 
+                [System.Net.IPAddress]$newip = [System.Net.IPAddress]($current.KnownIP)
+                $nRecord.RecordData.IPv4Address = $newip
+                
+                $setDns += "$((Set-DnsServerResourceRecord -NewInputObject $nRecord -OldInputObject $oRecord -ZoneName $forwardZone -PassThru -ErrorAction SilentlyContinue).DistinguishedName)`n"
+                $addPtr += "$((Add-DnsServerResourceRecordPtr -Name $ptrName -ZoneName $reverseZone -AllowUpdateAny -PtrDomainName "$($current.Host).$forwardZone" -PassThru -ErrorAction SilentlyContinue).DistinguishedName)`n"
+            }
+            catch [Microsoft.Management.Infrastructure.CimException] {
+                try{
+                    $addDns += "$((Add-DNSServerResourceRecordA -ZoneName $forwardZone -Name $current.Host -IPv4Address $current.KnownIP -CreatePtr -AllowUpdateAny -PassThru -ErrorAction Stop).DistinguishedName)`n"
+                }
+                catch{
+                    $err += $error[0].Exception
+                }
+            }
+            catch {
+                $err += $error[0].Exception
+            }
+        }
+
+        @{'AddedARecords'=$adddns;
+          'UpdatedARecords'=$setdns;
+          'UpdatedPtrRecords'=$addPtr;
+          'Errors'=$err}
+    }
+
+    $props = [Ordered]@{'Status' = "Success"
+                        'Message' = "Runbook Finished Successfully"
+                        'DNSRecords' = $DNSRecords
+                        'ObjectCount' = 1
+    }
+}
+catch
+{
+    # Add to trace on what line the error occured and the exception message
+    $excep = $(if($error[0].Exception -contains ("`"")){$error[0].Exception -Replace ("`"","'")}else{$error[0].Exception})
+    $rbLog.WriteLogEntry($RunbookName, "Failed - Exception Caught at line $($error[0].InvocationInfo.ScriptLineNumber), $excep")
+
+    $props = [Ordered]@{'Status' = "Failed"
+                        'Message' = $excep
+                        'DNSRecords' = $null
+                        'ObjectCount' = 0
+    }
+
+    Write-Error $excep -ErrorAction Continue
+}
+finally
+{
+    try{
+        Remove-PSSession -name $($session.name)
+        $rbLog.WriteLogEntry($RunbookName,"Session $($session.Name) Removed")
+    }
+    catch{
+        $rbLog.WriteLogEntry($RunbookName,"Session $($session.Name) could not be removed")
+    }
+    
+
+    $rbLog.Log.GetEnumerator() | foreach { Write-Verbose "$($_.RunbookName), $($_.Message), $($_.TimeStamp)" }
+    $rbLog.WriteLogEntry($RunbookName,"Total Runtime: $((([DateTime]::Now) - $StartTime).TotalSeconds) Seconds")
+
+    # Finalize output object
+    $props.Add('Trace',$rbLog.Log)
+    $props.Add('RunbookName',$RunbookName)
+
+    $out = New-Object -TypeName PSObject -Property $props
+
+    Write-Output $out
+}
