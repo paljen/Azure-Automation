@@ -64,6 +64,19 @@ try
 
     [RunbookLog]$rbLog = [RunbookLog]::new($FilePath,$RunbookName)
     $rbLog.WriteLogEntry($RunbookName, "Runbook started")
+
+    try{
+        Get-AzureRmAutomationAccount | Out-Null
+    }
+    catch{
+        $conn = .\Connect-AzureRMAutomation.ps1
+        
+        $rbLog.WriteLogEntry($conn)
+
+        if($conn.status -ne "Success"){
+            Throw "Error - Connecting to Azure failed"
+        } 
+    }
            
     $modules = @()
     $modules += .\Connect-MSOnline.ps1
