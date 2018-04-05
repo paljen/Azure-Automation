@@ -49,7 +49,7 @@ $RunbookName = "Invoke-AzureADSync"
 try
 {
     # Test data
-    #$computername = "dkhqaads01"
+    #$computername = ""
     #$synctype = "delta"
 
     if ([String]::IsNullOrEmpty($RunbookName)) 
