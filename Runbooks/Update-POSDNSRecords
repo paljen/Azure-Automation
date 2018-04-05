@@ -80,8 +80,8 @@ try
         $connection.close()
     }
     
-    $dc = "DKHQDC01"
-    $connString = "server=dkhqsapfmstst01;database=GK_GBR;trusted_connection=True;Integrated Security=False;"
+    $dc = ""
+    $connString = "server=;database=GK_GBR;trusted_connection=True;Integrated Security=False;"
 
     # Credentials
     $key = "89 171 118 60 58 254 218 61 140 93 2 109 84 102 189 13 22 85 88 237 101 180 37 174 207 53 53 231 70 220 170 105"
